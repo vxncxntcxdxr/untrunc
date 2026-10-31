@@ -185,8 +185,16 @@ bool Mp4::repairCanon() {
 	auto& mdat = *current_mdat_;
 	if (!has_canon_brand_ || !readCanonHeader(mdat, 0, header) ||
 	    canonTrack(tracks_, header.type) < 0) return false;
+	// Other Canon variants use PCM audio or different index layouts. Keep
+	// those recordings on the existing scanner rather than skipping a track.
 	int video_idx = canonTrack(tracks_, "vide");
 	if (video_idx < 0) return false;
+	int audio_idx = canonTrack(tracks_, "aac ");
+	int timecode_idx = canonTrack(tracks_, "tmcd");
+	for (size_t i = 0; i < tracks_.size(); ++i) {
+		if (tracks_[i].is_dummy_) continue;
+		if (int(i) != video_idx && int(i) != audio_idx && int(i) != timecode_idx) return false;
+	}
 	CanonHevcParser parser(tracks_[video_idx].codec_.av_codec_params_);
 	vector<pair<int, size_t>> group; // (picture order count, decode index)
 	vector<size_t> presentation_order;
